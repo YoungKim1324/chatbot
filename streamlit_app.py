@@ -1,56 +1,49 @@
 import streamlit as st
 from openai import OpenAI
 
-# Show title and description.
-st.title("💬 Chatbot")
+# 앱 제목 및 설명
+st.title("건강 상담 챗봇")
 st.write(
-    "This is a simple chatbot that uses OpenAI's GPT-3.5 model to generate responses. "
-    "To use this app, you need to provide an OpenAI API key, which you can get [here](https://platform.openai.com/account/api-keys). "
-    "You can also learn how to build this app step by step by [following our tutorial](https://docs.streamlit.io/develop/tutorials/llms/build-conversational-apps)."
+    "이 챗봇은 오픈AI의 GPT-4o-mini 모델을 사용하여 건강 관련 질문에 답변합니다. "
+    "오픈AI API 키를 입력하고 시작하세요. "
+    "API 키는 [여기](https://platform.openai.com/account/api-keys)에서 발급받을 수 있습니다."
 )
 
-# Ask user for their OpenAI API key via `st.text_input`.
-# Alternatively, you can store the API key in `./.streamlit/secrets.toml` and access it
-# via `st.secrets`, see https://docs.streamlit.io/develop/concepts/connections/secrets-management
-openai_api_key = st.text_input("OpenAI API Key", type="password")
+# 사용자에게 오픈AI API 키를 입력받음
+openai_api_key = st.text_input("오픈AI API 키", type="password")
 if not openai_api_key:
-    st.info("Please add your OpenAI API key to continue.", icon="🗝️")
+    st.info("오픈AI API 키를 입력해주세요.", icon="🗝️")
 else:
-
-    # Create an OpenAI client.
+    # OpenAI 클라이언트 생성
     client = OpenAI(api_key=openai_api_key)
 
-    # Create a session state variable to store the chat messages. This ensures that the
-    # messages persist across reruns.
+    # 세션 상태에 채팅 메시지 저장
     if "messages" not in st.session_state:
-        st.session_state.messages = []
+        st.session_state.messages = [{"role": "system", "content": "당신은 친절한 건강 상담 전문가입니다. 사용자 질문에 한글로 답변하세요."}]
 
-    # Display the existing chat messages via `st.chat_message`.
+    # 기존 채팅 메시지 표시
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
-    # Create a chat input field to allow the user to enter a message. This will display
-    # automatically at the bottom of the page.
-    if prompt := st.chat_input("What is up?"):
-
-        # Store and display the current prompt.
-        st.session_state.messages.append({"role": "user", "content": prompt})
+    # 사용자 입력 필드 생성
+    if user_input := st.chat_input("건강 관련 질문을 입력하세요..."):
+        # 사용자 메시지를 세션 상태에 저장
+        st.session_state.messages.append({"role": "user", "content": user_input})
         with st.chat_message("user"):
-            st.markdown(prompt)
+            st.markdown(user_input)
 
-        # Generate a response using the OpenAI API.
-        stream = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": m["role"], "content": m["content"]}
-                for m in st.session_state.messages
-            ],
-            stream=True,
-        )
-
-        # Stream the response to the chat using `st.write_stream`, then store it in 
-        # session state.
+        # gpt-4o-mini 모델을 사용하여 응답 생성
         with st.chat_message("assistant"):
-            response = st.write_stream(stream)
-        st.session_state.messages.append({"role": "assistant", "content": response})
+            with st.spinner("답변을 생성 중입니다..."):
+                response = client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=st.session_state.messages,
+                )
+                assistant_message = response.choices[0].message.content
+
+            # 응답 표시
+            st.markdown(assistant_message)
+
+        # 응답 메시지를 세션 상태에 저장
+        st.session_state.messages.append({"role": "assistant", "content": assistant_message})
